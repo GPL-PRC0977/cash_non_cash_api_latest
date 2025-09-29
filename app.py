@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
 from functions import save_file_info_to_bq, get_drive_service, is_valid_api_key, gemini_processing
+from googleapiclient.http import MediaFileUpload
 
 load_dotenv()
 
