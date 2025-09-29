@@ -141,7 +141,7 @@ def upload_bulk_to_gdrive():
                     supportsAllDrives=True
                 ).execute()
             finally:
-                save_file_info_to_bq(filename,new_file_name,"test","test description",uploaded_by)
+                save_file_info_to_bq(filename,new_file_name,"","",uploaded_by)
                 gemini_processing(filepath, new_file_name)
                 if media._fd:
                     media._fd.close()
