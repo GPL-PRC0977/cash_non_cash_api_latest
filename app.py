@@ -172,19 +172,37 @@ def get_app_master_data():
             return jsonify({"status": "error",
                             "message": "Unauthorized. Invalid API key."}), 401
 
-        query = f"""
-        SELECT
-            master.file_id,
-            master.file_original_name,
-            master.ir_type,
-            master.ir_description,
-            lower(extracts.document_type) as document_type,
-            coalesce(extracts.error, '') as error,
-            FORMAT_DATETIME("%m/%d/%Y %I:%M:%S %p", DATETIME(master.date_uploaded)) AS date_uploaded,
-            master.uploaded_by
-            FROM `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.store_upload_master` as master
-            join `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.data_extracts` as extracts
-            on REGEXP_EXTRACT(extracts.file_name, r'[^/]+$') = master.file_new_name
+        query = f"""            
+            with cte_master as (
+                select
+                file_id,
+                file_new_name,
+                file_original_name,
+                FORMAT_DATETIME("%m/%d/%Y %I:%M:%S %p", DATETIME(date_uploaded)) AS date_uploaded,
+                ROW_NUMBER() OVER (
+                    PARTITION BY file_original_name
+                    ORDER BY date_uploaded DESC
+                    ) AS rn
+                from `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.store_upload_master`
+                )
+                select 
+                cte.file_id,
+                cte.file_new_name,
+                cte.file_original_name,
+                cte.date_uploaded,
+                master.uploaded_by,
+                master.ir_type,
+                master.ir_description,
+                coalesce(extracts.error,'') as error,
+                lower(extracts.document_type) as document_type
+                from cte_master as cte 
+                join `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.store_upload_master` as master
+                on cte.file_id = master.file_id
+                join `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.data_extracts` as extracts
+                on REGEXP_EXTRACT(extracts.file_name, r'[^/]+$') = cte.file_new_name
+                where rn = 1
+
+
         """
         
         print(f"Query: {query}")
