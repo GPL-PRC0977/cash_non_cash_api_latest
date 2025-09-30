@@ -179,7 +179,7 @@ def get_app_master_data():
             master.ir_type,
             master.ir_description,
             lower(extracts.document_type) as document_type,
-            extracts.error,
+            coalesce(extracts.error, '') as error,
             FORMAT_DATETIME("%m/%d/%Y %I:%M:%S %p", DATETIME(master.date_uploaded)) AS date_uploaded,
             master.uploaded_by
             FROM `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.store_upload_master` as master
