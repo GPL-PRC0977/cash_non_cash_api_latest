@@ -173,34 +173,34 @@ def get_app_master_data():
                             "message": "Unauthorized. Invalid API key."}), 401
 
         query = f"""            
-            with cte_master as (
-                select
-                file_id,
-                file_new_name,
-                file_original_name,
-                FORMAT_DATETIME("%m/%d/%Y %I:%M:%S %p", DATETIME(date_uploaded)) AS date_uploaded,
-                ROW_NUMBER() OVER (
+            WITH cte_master AS (
+                SELECT
+                    file_id,
+                    file_new_name,
+                    file_original_name,
+                    date_uploaded,
+                    ROW_NUMBER() OVER (
                     PARTITION BY file_original_name
                     ORDER BY date_uploaded DESC
                     ) AS rn
-                from `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.store_upload_master`
+                FROM `pgc-dma-dev-sandbox.cash_non_cash.store_upload_master`
                 )
-                select 
+                SELECT 
                 cte.file_id,
                 cte.file_new_name,
                 cte.file_original_name,
-                cte.date_uploaded,
+                FORMAT_TIMESTAMP("%m/%d/%Y %I:%M:%S %p", TIMESTAMP(cte.date_uploaded), "Asia/Manila") AS date_uploaded,
                 master.uploaded_by,
                 master.ir_type,
                 master.ir_description,
-                coalesce(extracts.error,'') as error,
-                lower(extracts.document_type) as document_type
-                from cte_master as cte 
-                join `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.store_upload_master` as master
-                on cte.file_id = master.file_id
-                join `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.data_extracts` as extracts
-                on REGEXP_EXTRACT(extracts.file_name, r'[^/]+$') = cte.file_new_name
-                where rn = 1
+                COALESCE(extracts.error, '') AS error,
+                LOWER(extracts.document_type) AS document_type
+                FROM cte_master AS cte
+                JOIN `pgc-dma-dev-sandbox.cash_non_cash.store_upload_master` AS master
+                ON cte.file_id = master.file_id
+                JOIN `pgc-dma-dev-sandbox.cash_non_cash.data_extracts` AS extracts
+                ON REGEXP_EXTRACT(extracts.file_name, r'[^/]+$') = cte.file_new_name
+                WHERE rn = 1;
 
 
         """
