@@ -200,7 +200,7 @@ def get_app_master_data():
                 ON cte.file_id = master.file_id
                 JOIN `pgc-dma-dev-sandbox.cash_non_cash.data_extracts` AS extracts
                 ON REGEXP_EXTRACT(extracts.file_name, r'[^/]+$') = cte.file_new_name
-                WHERE rn = 1;
+                WHERE rn = 1 order by date_uploaded desc;
 
 
         """
