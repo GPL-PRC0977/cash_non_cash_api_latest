@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
-from functions import save_file_info_to_bq, get_drive_service, is_valid_api_key, gemini_processing
+from functions import save_file_info_to_bq, get_drive_service, is_valid_api_key, gemini_processing, BQ_CLIENT_READER, BQ_READER_CREDENTIALS, BQ_CLIENT_WRITER
 from googleapiclient.http import MediaFileUpload
 
 load_dotenv()
@@ -162,10 +162,48 @@ def upload_bulk_to_gdrive():
     except Exception as e:
         return jsonify({"status": "failed"}), 500
 
+@app.route('/get_app_master_data', methods=['GET'])
+def get_app_master_data():
+    try:
+        print("Entering get_app_master_data endpoint.")
+        
+        api_key = request.headers.get('X-API-Key')
+        if not api_key or not is_valid_api_key(api_key):
+            return jsonify({"status": "error",
+                            "message": "Unauthorized. Invalid API key."}), 401
 
-# if __name__ == '__main__':
-#     from googleapiclient.http import MediaFileUpload
-#     app.run(debug=True, port=5001)
+        query = f"""
+        SELECT
+            master.file_id,
+            master.file_original_name,
+            master.ir_type,
+            master.ir_description,
+            lower(extracts.document_type) as document_type,
+            extracts.error,
+            FORMAT_DATETIME("%m/%d/%Y %I:%M:%S %p", DATETIME(master.date_uploaded)) AS date_uploaded,
+            master.uploaded_by
+            FROM `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.store_upload_master` as master
+            join `{os.getenv("BQ_PROJECT_NAME")}.cash_non_cash.data_extracts` as extracts
+            on REGEXP_EXTRACT(extracts.file_name, r'[^/]+$') = master.file_new_name
+        """
+        
+        print(f"Query: {query}")
+        
+
+        query_job = BQ_CLIENT_WRITER.query(query)
+        results = query_job.result()
+
+        rows = [dict(row) for row in results]
+        if not rows:
+            return jsonify({"message": "No data found"})
+        return jsonify(rows)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    from googleapiclient.http import MediaFileUpload
+    app.run(debug=True, port=5001)
+
+# if __name__ == '__main__':
+#     app.run(debug=True)

@@ -57,6 +57,11 @@ BQ_CLIENT_WRITER = bigquery.Client(
     project=BQ_WRITER_CREDENTIALS.project_id
 )
 
+BQ_CLIENT_READER = bigquery.Client(
+    credentials=BQ_READER_CREDENTIALS, 
+    project=BQ_READER_CREDENTIALS.project_id
+)
+
 def is_valid_api_key(api_key):
     api_client = bigquery.Client(
         credentials=API_CREDENTIALS, project=API_CREDENTIALS.project_id)
