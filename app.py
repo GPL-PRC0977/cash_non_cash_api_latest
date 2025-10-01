@@ -219,9 +219,9 @@ def get_app_master_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# if __name__ == '__main__':
-#     from googleapiclient.http import MediaFileUpload
-#     app.run(debug=True, port=5001)
-
 if __name__ == '__main__':
-    app.run(debug=True)
+    from googleapiclient.http import MediaFileUpload
+    app.run(debug=True, port=5001)
+
+# if __name__ == '__main__':
+#     app.run(debug=True)
