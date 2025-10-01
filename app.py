@@ -196,9 +196,9 @@ def get_app_master_data():
                 COALESCE(extracts.error, '') AS error,
                 LOWER(extracts.document_type) AS document_type
                 FROM cte_master AS cte
-                JOIN `pgc-dma-dev-sandbox.cash_non_cash.store_upload_master` AS master
+                LEFT JOIN `pgc-dma-dev-sandbox.cash_non_cash.store_upload_master` AS master
                 ON cte.file_id = master.file_id
-                JOIN `pgc-dma-dev-sandbox.cash_non_cash.data_extracts` AS extracts
+                LEFT JOIN `pgc-dma-dev-sandbox.cash_non_cash.data_extracts` AS extracts
                 ON REGEXP_EXTRACT(extracts.file_name, r'[^/]+$') = cte.file_new_name
                 WHERE rn = 1 order by cte.date_uploaded desc;
 
