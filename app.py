@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 import uuid
 from functions import save_file_info_to_bq, get_drive_service, is_valid_api_key, gemini_processing, BQ_CLIENT_READER, BQ_READER_CREDENTIALS, BQ_CLIENT_WRITER
 from googleapiclient.http import MediaFileUpload
+from google.cloud import bigquery
 
 load_dotenv()
 
@@ -171,6 +172,16 @@ def get_app_master_data():
         if not api_key or not is_valid_api_key(api_key):
             return jsonify({"status": "error",
                             "message": "Unauthorized. Invalid API key."}), 401
+        
+        data = request.get_json()
+
+        print(f"Data: {data}")
+
+        user = data['user']
+
+        if not user:
+            return jsonify({"status": "error",
+                            "message": "Missing required parameter: user"}), 400
 
         query = f"""            
             WITH cte_master AS (
@@ -200,15 +211,21 @@ def get_app_master_data():
                 ON cte.file_id = master.file_id
                 LEFT JOIN `pgc-dma-dev-sandbox.cash_non_cash.data_extracts` AS extracts
                 ON REGEXP_EXTRACT(extracts.file_name, r'[^/]+$') = cte.file_new_name
-                WHERE rn = 1 order by cte.date_uploaded desc;
+                WHERE rn = 1
+                and master.uploaded_by = @user
+                order by cte.date_uploaded desc;
 
 
         """
         
-        print(f"Query: {query}")
-        
 
-        query_job = BQ_CLIENT_WRITER.query(query)
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("user", "STRING", user)
+            ]
+        )
+
+        query_job = BQ_CLIENT_WRITER.query(query, job_config=job_config)
         results = query_job.result()
 
         rows = [dict(row) for row in results]
