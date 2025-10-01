@@ -1,0 +1,27 @@
+{
+    // "editor.tokenColorCustomizations": {
+    //     "textMateRules": [
+    //         {
+    //             "scope": "entity.name.function",
+    //             "settings": {
+    //                 "foreground": "#bae703",   // neon green
+    //                 "fontStyle": "bold"
+    //             }
+    //         },
+    //         {
+    //             "scope": "keyword.control",
+    //             "settings": {
+    //                 "foreground": "#9045e6",  // bright red
+    //                 "fontStyle": "bold"
+    //             }
+    //         },
+    //         {
+    //             "scope": "comment",
+    //             "settings": {
+    //                 "foreground": "#808080",  // gray
+    //                 "fontStyle": "italic"
+    //             }
+    //         }
+    //     ]
+    // }
+}

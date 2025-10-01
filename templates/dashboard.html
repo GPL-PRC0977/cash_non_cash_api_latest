@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        .container {
+            margin: auto;
+            margin-top: 70px;
+        }
+        .custom_table td{
+            font-size: 14px !important;
+        }
+        .table-container {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container" style="max-width: unset !important;height:100%;">
+        <div class="card border-0" style="height: calc(100vh - 80px);">
+            <div class="table-container border-0">
+                <table class="table table-bordered table-hover custom_table" style="margin-bottom: unset !important;">
+                    <thead>
+                        <tr>
+                            <th style="width: 20px;"></th>
+                            <th class="d-none">File ID</th>
+                            <th style="width: 370px;">File Name</th>
+                            <th style="width: 150px;">IR Type</th>
+                            <th style="width: 350px;">IR Details</th>
+                            <th style="width: 150px;">Document Type</th>
+                            <th style="width: 230px;">Processing Remarks</th>
+                            <th style="width: 250px;">Uploaded By / Date Uploaded</th>
+                            <!-- <th>Uploaded By</th> -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if master_data %}
+                            {% for data in master_data%}
+                            <tr>
+                                <td class="align-middle"><i class="bi bi-caret-right-fill"
+                                    style="color: rgb(103, 106, 104);font-size:8px;"></i></td>
+                                <td class="d-none align-middle">{{ data.file_id }}</td>
+                                <td class="align-middle"><i class="bi bi-paperclip text-primary" style="rotate: 5deg;"></i> <u>{{ data.file_original_name }}</u></td>
+                                <td class="align-middle">{{ data.ir_type }}</td>
+                                <td class="align-middle">{{ data.ir_description }}</td>
+                                <td class="align-middle">{{ data.document_type }}</td>
+                                <td class="align-middle">{{ data.error }}</td>
+                                <!-- <td>{{ data.date_uploaded }}</td> -->
+                                <td class="align-middle"><span class="badge bg-light text-secondary"><i class="bi bi-person-fill text-primary"></i> {{ data.uploaded_by }}</span> <br> 
+                                    <span class="badge bg-light text-secondary"><i class="bi bi-calendar-event"></i> {{ data.date_uploaded }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

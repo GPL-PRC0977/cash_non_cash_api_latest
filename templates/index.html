@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Document</title>
+    <style>
+        .dropzone {
+            border: 2px dashed #c9c9c9;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            transition: background-color 0.3s, border-color 0.3s;
+            cursor: pointer;
+        }
+
+        .dropzone.dragover {
+            background-color: #e9f5ff;
+            border-color: #0a58ca;
+        }
+
+        .dropzone i {
+            font-size: 3rem;
+            color: #0d6efd;
+        }
+
+        .dropzone p {
+            margin-top: 10px;
+            color: #6c757d;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background-color: #335cf0 !important;
+            border-color: #335cf0 !important;
+            color: #fff !important;
+            border-radius: 5px !important;
+
+            font-weight: 600 !important;
+            transition: background-color 0.3s ease !important;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    
+    <div class="container" style="margin-top: 80px;">
+        <div class="row">
+            <div class="col-sm text-center">
+                <h3 class="text-center mb-3">Drag & Drop to Upload File</h3>
+                <label class="text-center text-muted mt-2" style="font-size: 0.9rem;">
+                    Supported formats: PDF, DOCX, JPG, PNG
+                </label>
+                <br>
+                <span class="badge text-dark-subtle fw-normal text-wrap bg-light-subtle">
+                    <i class="bi bi-info-circle-fill me-2"></i> Note: Please ensure your document is in
+                    one of the supported formats and less than or equal to 10MB before uploading.
+                </span>
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card border-0">
+                    <div class="card-body p-4 text-center">
+                        <strong>Upload Document With IR</strong>
+                        <p></p>
+                        <form method="POST" action="/upload_ir" enctype="multipart/form-data" id="uploadForm_ir">
+                            <!-- Dropzone -->
+                            <div class="dropzone" id="dropzone_for_ir">
+                                <i class="bi bi-cloud-upload"></i>
+                                <p>Drag & drop your file here, or click to browse</p>
+
+                                {% if message %}
+                                <input type="hidden" id="hidden_message" value="{{ message }}">
+                                {% endif %}
+
+                                <input type="file" name="file_input_for_ir" id="file_input_for_ir" class="d-none"
+                                    required />
+                                <div class="file-name text-primary" id="file_name_for_ir"></div>
+                            </div>
+
+                            <!-- Note -->
+                            <div class="text-center text-muted mt-2" style="font-size: 0.8rem;">
+                                <span class="badge bg-light-subtle text-dark-subtle fw-normal">
+                                    <i class="bi bi-info-circle-fill me-2"></i> Note: Only 1 file at a time.
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-center mt-4">
+                                <button type="button" id="submit_ir" class="btn btn-primary w-50 rounded-5">
+                                    <i class="bi bi-cloud-arrow-up me-2"></i>Upload and Submit
+                                </button>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card border-0">
+                    <div class="card-body p-4 text-center">
+                        <strong>Bulk Upload (<label class="text-danger">Without IR</label>)</strong>
+                        <p></p>
+                        <form method="POST" action="/api_upload_bulk" enctype="multipart/form-data" id="uploadForm_bulk">
+                            <!-- Dropzone -->
+                            <div class="dropzone overflow-y-auto" id="dropzone_for_bulk" style="max-height: 205.2px;">
+                                <i class="bi bi-cloud-upload"></i>
+                                <p>Drag & drop your file here, or click to browse</p>
+                                <input type="file" name="file_input_for_bulk" id="file_input_for_bulk" multiple class="d-none"
+                                    required />
+                                <div class="file-name text-primary" id="file_name_for_bulk"></div>
+                            </div>
+                            <div class="text-center text-muted mt-2" style="font-size: 0.8rem;">
+                                <span class="badge bg-light-subtle text-dark-subtle fw-normal">
+                                    <i class="bi bi-info-circle-fill me-2"></i> Note: Maximum of 50 files at a time are
+                                    allowed.
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-center mt-4">
+                                <button type="submit" id="btn_submit_bulk" class="btn btn-primary w-50 rounded-5">
+                                    <i class="bi bi-cloud-arrow-up me-2"></i>Upload and Submit
+                                </button>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="ir_modal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="ir_modalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header p-2 pe-3">
+                        <h1 class="modal-title fs-5 ms-1" id="ir_modalLabel">Required Information</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+
+                        <label class="mb-1">Incident Report Type</label>
+                        <input type="hidden" name="ir_file" id="ir_file" />
+                        <select class="form-select form-select-sm mb-3" name="dd_ir_type" id="dd_ir_type"
+                            aria-label=".form-select-sm example" style="font-size: 0.9rem;" required>
+                            <option selected disabled value="">Select IR Type</option>
+                            <option value="Acts of God">Acts of God</option>
+                            <option value="Cashier Error">Cashier Error</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <label class="mb-1">Incident Report Description</label>
+                        <textarea id="txt_ir_description" name="txt_ir_description" class="form-control form-control-sm"
+                            rows="3" style="font-size: 0.9rem;" required></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <input type="button" id="proceed_submit_ir" class="btn btn-sm btn-primary fw-normal"
+                            value="Proceed Upload">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-lg me-2"></i>Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bootstrap modal for feedback -->
+        <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header p-2 pe-3">
+                        <h5 class="modal-title ms-2">Upload File</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <input type="hidden" id="hidden_message" value="{{ message }}">
+                    <div class="modal-body">
+                        <!-- {% if not "Error uploading file" in message %}
+                        <p><i class="bi bi-info-circle text-success me-2"></i>File: <strong><label
+                                    id="uploaded_file_name"></label></strong>
+                            successfully uploaded.</p>
+                        {% else %}
+                        <p><i class="bi bi-info-circle text-danger"></i> {{ message }}</p>
+                        {% endif %} -->
+
+                        <p><i class="bi bi-info-circle me-2" id="info_icon"></i><label class=""
+                                    id="uploaded_file_name"></label></p>
+
+                    </div>
+                    <div class="modal-footer p-1">
+                        <button type="button" id="btn_reload" class="btn btn-sm btn-secondary"
+                            data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="feedbackModalBulk" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header p-2 pe-3">
+                        <h5 class="modal-title ms-2">Upload File</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <input type="hidden" id="hidden_message" value="{{ message }}">
+                    <div class="modal-body">
+                        <p><i class="bi bi-info-circle me-2" id="info_icon"></i>
+                        Upload successful. Processing will continue in the background.
+                        </p>
+                    </div>
+                    <div class="modal-footer p-1">
+                        <button type="button" id="btn_reload2" class="btn btn-sm btn-secondary"
+                            data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="uploadNotif" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+            aria-labelledby="uploadNotifLabel" aria-hidden="true">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-body text-center">
+                        <div class="spinner-border text-primary mb-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <br />
+                        <h5 class="mb-2">Uploading your file</h5>
+                        <p class="text-muted mb-0">Please wait while we complete the process.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const message = document.getElementById('hidden_message') ? document.getElementById('hidden_message').value : null;
+
+                if (message) {
+                    var modal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+                    modal.show();
+                }
+            });
+        </script>
+
+        <script>
+            document.getElementById('btn_reload').addEventListener('click', function () {
+                window.location.reload();
+            });
+        </script>
+
+        <script>
+            document.getElementById('btn_reload2').addEventListener('click', function () {
+                window.location.reload();
+            });
+        </script>
+
+        <script>
+            const btn_show_modal = document.getElementById('submit_ir');
+            const submit_ir = document.getElementById('proceed_submit_ir');
+            const file_input_for_ir = document.getElementById('file_input_for_ir');
+            const irModal = new bootstrap.Modal(document.getElementById('ir_modal'));
+            const uploadNotif = new bootstrap.Modal(document.getElementById('uploadNotif'));
+            const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+
+            btn_show_modal.addEventListener('click', function () {
+                if (!file_input_for_ir.files || file_input_for_ir.files.length === 0) {
+                    alert("Please select at least one file before submitting.");
+                } else {
+                    irModal.show();
+                }
+            });
+
+            submit_ir.addEventListener('click', function () {
+                const file = file_input_for_ir.files[0];
+                const irType = document.getElementById('dd_ir_type').value;
+                const irDescription = document.getElementById('txt_ir_description').value;
+
+                irModal.hide();
+                uploadNotif.show();
+
+                const formData = new FormData();
+                formData.append('ir_file', file_input_for_ir.files[0]);
+                formData.append('ir_type', irType);
+                formData.append('ir_description', irDescription);
+
+                fetch('/api_upload_ir', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Upload failed.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        uploadNotif.hide();
+                        const info_icon = document.getElementById('info_icon');
+
+                        if (data.status == 'success'){
+                            info_icon.classList.remove('text-danger');
+                            info_icon.classList.add('text-success');
+                        } else {
+                            info_icon.classList.remove('text-success');
+                            info_icon.classList.add('text-danger');
+                        }
+                        document.getElementById('uploaded_file_name').textContent = data.message;
+                        feedbackModal.show();
+                    })
+                    .catch(error => {
+                        alert("Error: " + error.message);
+                    });
+            });
+        </script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const btn = document.getElementById('btn_submit_bulk');
+                const fileInput = document.getElementById('file_input_for_bulk');
+                const uploadNotif = new bootstrap.Modal(document.getElementById('uploadNotif'));
+                const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModalBulk'));
+
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault(); // prevent form submission reload
+
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        alert("Please select at least one file before submitting.");
+                        return;
+                    }
+
+                    uploadNotif.show();
+
+                    const formData = new FormData();
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        formData.append('bulk_file', fileInput.files[i]);
+                    }
+
+                    fetch('/api_upload_bulk', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Upload failed.');
+                        return response.json();
+                    })
+                    .then(data => {
+                        uploadNotif.hide();
+                        feedbackModal.show();
+                        //alert("Upload successful. Processing will continue in the background.");
+                        // optionally: feedbackModal.show();
+                    })
+                    .catch(error => {
+                        uploadNotif.hide();
+                        alert("Error: " + error.message);
+                    });
+                });
+            });
+        </script>
+        
+
+        <script>
+            const dropzone = document.getElementById('dropzone_for_ir');
+            const fileInput = document.getElementById('file_input_for_ir');
+            const fileName = document.getElementById('file_name_for_ir');
+
+            // Open file dialog on click
+            dropzone.addEventListener('click', () => fileInput.click());
+
+            // Highlight dropzone on drag
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('dragover');
+            });
+
+            // Handle file drop
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    fileName.textContent = files[0].name;
+                }
+            });
+
+            // Show selected file name
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    fileName.textContent = fileInput.files[0].name;
+                }
+            });
+        </script>
+
+        <script>
+            const dropzone_bulk = document.getElementById('dropzone_for_bulk');
+            const fileInput_bulk = document.getElementById('file_input_for_bulk');
+            const fileName_bulk = document.getElementById('file_name_for_bulk');
+
+            // Open file dialog on click
+            dropzone_bulk.addEventListener('click', () => fileInput_bulk.click());
+
+            // Highlight dropzone on drag
+            dropzone_bulk.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone_bulk.classList.add('dragover');
+            });
+
+            dropzone_bulk.addEventListener('dragleave', () => {
+                dropzone_bulk.classList.remove('dragover');
+            });
+
+            // Handle file drop
+            dropzone_bulk.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone_bulk.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput_bulk.files = files;
+                    displayFileNames(files);
+                }
+            });
+
+            // Show selected file names
+            fileInput_bulk.addEventListener('change', () => {
+                if (fileInput_bulk.files.length > 0) {
+                    displayFileNames(fileInput_bulk.files);
+                }
+            });
+
+            // Function to display multiple file names
+            function displayFileNames(files) {
+                const names = Array.from(files).map(file => file.name).join(', ');
+                fileName_bulk.textContent = names;
+            }
+        </script>
+
+</body>
+
+</html>
