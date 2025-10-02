@@ -163,7 +163,7 @@ def upload_bulk_to_gdrive():
     except Exception as e:
         return jsonify({"status": "failed"}), 500
 
-@app.route('/get_app_master_data', methods=['GET'])
+@app.route('/get_app_master_data', methods=['POST'])
 def get_app_master_data():
     try:
         print("Entering get_app_master_data endpoint.")
@@ -175,9 +175,11 @@ def get_app_master_data():
         
         data = request.get_json()
 
-        print(f"Data: {data}")
+        # user = request.args.get('user')
 
-        user = data['user']
+        print(f"User: {data}")
+
+        user = data.get('user')
 
         if not user:
             return jsonify({"status": "error",
