@@ -6,6 +6,7 @@ import uuid
 from functions import save_file_info_to_bq, get_drive_service, is_valid_api_key, gemini_processing, BQ_CLIENT_READER, BQ_READER_CREDENTIALS, BQ_CLIENT_WRITER
 from googleapiclient.http import MediaFileUpload
 from google.cloud import bigquery
+from datetime import datetime
 
 load_dotenv()
 
@@ -94,74 +95,74 @@ def upload():
         return jsonify({'message': f"Error uploading file: {str(e)}"}), 500
     
 
-@app.route('/upload_bulk_to_gdrive', methods=['POST'])
-def upload_bulk_to_gdrive():
-    try:
-        api_key = request.headers.get('X-API-Key')
-        if not api_key or not is_valid_api_key(api_key):
-            return jsonify({"status": "error",
-                            "message": "Unauthorized. Invalid API key."}), 401
+# @app.route('/upload_bulk_to_gdrive', methods=['POST'])
+# def upload_bulk_to_gdrive():
+#     try:
+#         api_key = request.headers.get('X-API-Key')
+#         if not api_key or not is_valid_api_key(api_key):
+#             return jsonify({"status": "error",
+#                             "message": "Unauthorized. Invalid API key."}), 401
             
-        print("starting bulk gdrive upload...")
-        if 'bulk_file' not in request.files:
-            return jsonify({'error': 'No file part in the request.'}), 400
+#         print("starting bulk gdrive upload...")
+#         if 'bulk_file' not in request.files:
+#             return jsonify({'error': 'No file part in the request.'}), 400
 
-        files = request.files.getlist('bulk_file')
-        uploaded_by = request.form.get('uploaded_by')
+#         files = request.files.getlist('bulk_file')
+#         uploaded_by = request.form.get('uploaded_by')
 
-        print(f"Uploaded By: {uploaded_by}")
+#         print(f"Uploaded By: {uploaded_by}")
         
-        for file in files:
-            filename = file.filename
-            filepath = os.path.join(app.config['TEMP_FOLDER'], filename)
-            print(f"Filename: {filename}")
+#         for file in files:
+#             filename = file.filename
+#             filepath = os.path.join(app.config['TEMP_FOLDER'], filename)
+#             print(f"Filename: {filename}")
 
-            name, ext = os.path.splitext(filename)
-            uid = str(uuid.uuid4())
-            parts = uid.split('-')
-            collected_parts = [p[:4] for p in parts]
-            short_parts = ("-".join(collected_parts))
-            new_created_file_name = f"{name}-{short_parts}{ext}"
+#             name, ext = os.path.splitext(filename)
+#             uid = str(uuid.uuid4())
+#             parts = uid.split('-')
+#             collected_parts = [p[:4] for p in parts]
+#             short_parts = ("-".join(collected_parts))
+#             new_created_file_name = f"{name}-{short_parts}{ext}"
             
-            new_file_name = secure_filename(new_created_file_name)
+#             new_file_name = secure_filename(new_created_file_name)
             
-            file.save(filepath)
+#             file.save(filepath)
             
-            service = get_drive_service()
-            file_metadata = {
-                'name': new_file_name,
-                'parents': [os.getenv("UPLOAD_FOLDER_ID")]
-            }
-            media = MediaFileUpload(filepath, resumable=True)
+#             service = get_drive_service()
+#             file_metadata = {
+#                 'name': new_file_name,
+#                 'parents': [os.getenv("UPLOAD_FOLDER_ID")]
+#             }
+#             media = MediaFileUpload(filepath, resumable=True)
             
-            try:
-                service.files().create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields='id, name, webViewLink',
-                    supportsAllDrives=True
-                ).execute()
-            finally:
-                save_file_info_to_bq(filename,new_file_name,"","",uploaded_by)
-                gemini_processing(filepath, new_file_name)
-                if media._fd:
-                    media._fd.close()
+#             try:
+#                 service.files().create(
+#                     body=file_metadata,
+#                     media_body=media,
+#                     fields='id, name, webViewLink',
+#                     supportsAllDrives=True
+#                 ).execute()
+#             finally:
+#                 save_file_info_to_bq(filename,new_file_name,"","",uploaded_by)
+#                 gemini_processing(filepath, new_file_name)
+#                 if media._fd:
+#                     media._fd.close()
                     
-            try:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-            except Exception as cleanup_err:
-                print(f"Cleanup failed: {cleanup_err}")
+#             try:
+#                 if os.path.exists(filepath):
+#                     os.remove(filepath)
+#             except Exception as cleanup_err:
+#                 print(f"Cleanup failed: {cleanup_err}")
                 
-        return jsonify(
-            {
-                'message': 'Upload complete.',
-                'status': 'success'
-            }
-        ),200
+#         return jsonify(
+#             {
+#                 'message': 'Upload complete.',
+#                 'status': 'success'
+#             }
+#         ),200
                    
-    except Exception as e:
-        return jsonify({"status": "failed"}), 500
+#     except Exception as e:
+#         return jsonify({"status": "failed"}), 500
 
 @app.route('/get_app_master_data', methods=['POST'])
 def get_app_master_data():
@@ -237,6 +238,116 @@ def get_app_master_data():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def get_or_create_drive_folder(service, folder_name, parent_id):
+    print("Checking folder in gdrive.")
+    # Search for folder with the same name inside parent
+    query = f"mimeType='application/vnd.google-apps.folder' and trashed = false and name = '{folder_name}' and '{parent_id}' in parents"
+    results = service.files().list(
+        q=query,
+        spaces='drive',
+        fields='files(id, name)',
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True
+    ).execute()
+    items = results.get('files', [])
+
+    if items:
+        print(f"Folder '{folder_name}' already exists. Using existing folder.")
+        return items[0]['id']
+    
+    # Folder not found, so create it
+    file_metadata = {
+        'name': folder_name,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [parent_id]
+    }
+
+    folder = service.files().create(
+        body=file_metadata,
+        fields='id',
+        supportsAllDrives=True
+    ).execute()
+
+    print(f"Created new folder: {folder_name} with ID: {folder.get('id')}")
+    return folder.get('id')
+
+@app.route('/upload_bulk_to_gdrive', methods=['POST'])
+def upload_bulk_to_gdrive():
+    try:
+        api_key = request.headers.get('X-API-Key')
+        if not api_key or not is_valid_api_key(api_key):
+            return jsonify({"status": "error",
+                            "message": "Unauthorized. Invalid API key."}), 401
+
+        print("starting bulk gdrive upload...")
+        if 'bulk_file' not in request.files:
+            return jsonify({'error': 'No file part in the request.'}), 400
+
+        files = request.files.getlist('bulk_file')
+        uploaded_by = request.form.get('uploaded_by')
+
+        print(f"Uploaded By: {uploaded_by}")
+
+        # --- Create a new subfolder inside the main UPLOAD_FOLDER_ID ---
+        service = get_drive_service()
+        parent_folder_id = os.getenv("UPLOAD_FOLDER_ID")
+        folder_name = f"{uploaded_by}"
+        target_folder_id = get_or_create_drive_folder(service, folder_name, parent_id=parent_folder_id)
+
+        for file in files:
+            filename = file.filename
+            filepath = os.path.join(app.config['TEMP_FOLDER'], filename)
+            print(f"Filename: {filename}")
+
+            name, ext = os.path.splitext(filename)
+            uid = str(uuid.uuid4())
+            parts = uid.split('-')
+            collected_parts = [p[:4] for p in parts]
+            short_parts = ("-".join(collected_parts))
+            new_created_file_name = f"{name}-{short_parts}{ext}"
+
+            new_file_name = secure_filename(new_created_file_name)
+
+            file.save(filepath)
+
+            file_metadata = {
+                'name': new_file_name,
+                'parents': [target_folder_id]
+            }
+            media = MediaFileUpload(filepath, resumable=True)
+
+            try:
+                service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id, name, webViewLink',
+                    supportsAllDrives=True
+                ).execute()
+            finally:
+                save_file_info_to_bq(filename, new_file_name, "", "", uploaded_by)
+                gemini_processing(filepath, new_file_name)
+                if media._fd:
+                    media._fd.close()
+
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except Exception as cleanup_err:
+                print(f"Cleanup failed: {cleanup_err}")
+
+        return jsonify({
+            'message': f'Upload complete. Files uploaded to folder "{folder_name}".',
+            'status': 'success',
+            'folder_id': target_folder_id
+        }), 200
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"status": "failed"}), 500
+
+
 
 if __name__ == '__main__':
     from googleapiclient.http import MediaFileUpload
